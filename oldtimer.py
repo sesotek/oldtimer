@@ -1,5 +1,8 @@
 #!/usr/bin/python
-
+# oldtimer.py
+# Analyzes ChaNGa logs, prints statistics, and plots.
+# Author: Ian Smith
+# 2011-08-22
 
 # TODO: curses interface or GUI
 
@@ -13,6 +16,7 @@ import pylab as py
 RE_RUNG_DISTRIBUTION = 'Rung distribution'
 RE_DONE = 'Done.'
 RE_BIG_STEP_LINE = 'Big step'
+# Find number between 'took' and 'seconds'
 RE_TOOK_SECONDS = '(?<=took.)([0-9]*\.?[0-9]+).(?=seconds)'
 RE_BALANCER = 'Load balancer'
 RE_BUILD_TREES = 'Building trees'
@@ -22,24 +26,57 @@ RE_MARK_NEIGHBOR = 'Marking Neighbors'
 RE_DENSITY_OF_NEIGHBOR = 'Density of Neighbors'
 RE_PRESSURE_GRADIENT = 'Calculating pressure gradients'
 RE_DOMAIN_DECOMP = 'Domain decomposition'
+# Step as first word on line
 RE_SUB_STEP = '^Step:'
 
 # List of Axes
-AXES_LIST = [ 'Step', 'TotalStepTime', 'DomainDecompTimes', 'BalancerTimes', 'BuildTreesTimes', 'GravityTimes', 'DensityTimes', 'MarkNeighborTimes', 'DensityOfNeighborTimes', 'PressureGradientTimes' ]
+AXES_LIST = [ 'Step', 'TotalStepTime', 'DomainDecompTimes', 'BalancerTimes', 'BuildTreesTimes', 'GravityTimes', 'DensityTimes', 'MarkNeighborTimes', 'DensityOfNeighborTimes', 'PressureGradientTimes', 'RungIndexes' ]
+
+# List of logs
+logList = {}
+
+# Class RungIndex keeps info about a step on a rung, such as
+# the rung number from and to which the step is calculated, and the
+# line numbers of beginning and end of rung step in the log.
+class RungIndex:
+    def __init__(self):
+        self.fromRung = -1
+        self.toRung = -1
+        self.fromIndex = -1
+    def __repr__(self):
+        return "rung: " + str(self.fromRung) + " to " + str(self.toRung) + " at index " + str(self.fromIndex)
+
+# Adds a log to the logList, asking the user for a name
+# list log: log
+def addLogToList(log):
+    uniq = False
+    logName = ""
+    while not uniq:
+        logName = raw_input("Enter log name: ")
+        if logName in logList:
+            print 'Name already exists. Choose a unique name.'
+        else:
+            uniq = True
+    logList[logName] = log
+
+
 
 # Begins the parsing of a log file
 # list fullLog: list of lines in logfile
+# string logName: name of log
 def parseLog(fullLog):
     # Break up log into list of Big steps
     # Each bigStep is a dictionary, where 'logLines' contains all the text lines in that step
     bigSteps = []
+
     for bigStepText in getBigStepsLines(fullLog):
         bigSteps.append( { 'LogLines' : bigStepText } )
     
+    # Dictionary of stats and info calculated now, and stored for later use
     for index, bigStep in enumerate(bigSteps):
         bigStep['StepNumber'] = index
         bigStep['TotalStepTime'] = getStepTime(bigStep)
-        bigStep['DomainDecompTimes'] = getStepKeywordTimes(bigStep, RE_DOMAIN_DECOMP)
+        bigStep['DomainDecompTimes'] = getStepKeywordTimes(bigStep, RE_DOMAIN_DECOMP)  # below are lists of numbers
         bigStep['BalancerTimes'] = getStepKeywordTimes(bigStep, RE_BALANCER)
         bigStep['BuildTreesTimes'] = getStepKeywordTimes(bigStep, RE_BUILD_TREES)
         bigStep['GravityTimes'] = getStepKeywordTimes(bigStep, RE_GRAVITY)
@@ -47,13 +84,38 @@ def parseLog(fullLog):
         bigStep['MarkNeighborTimes'] = getStepKeywordTimes(bigStep, RE_MARK_NEIGHBOR)
         bigStep['DensityOfNeighborTimes'] = getStepKeywordTimes(bigStep, RE_DENSITY_OF_NEIGHBOR)
         bigStep['PressureGradientTimes'] = getStepKeywordTimes(bigStep, RE_PRESSURE_GRADIENT)
+        # Rung indexes stored as a list of rung objects
+        bigStep['RungIndexes'] = getRungIndexes(bigStep)    
     
-    
+    # Add this log to the logList
+    addLogToList(bigSteps)
+
     printStats(bigSteps)
 
-    getCommand(bigSteps)
-
     return
+
+# TODO: this is very dirty, clean up rung search
+def getRungIndexes(bigStep):
+    rungIndexes = []
+    lastIdx = -1
+    for i, line in enumerate(bigStep['LogLines']):
+        if "Rungs" in line:
+            # dirty part to fix
+            s, rungLine = line.split("Rungs")
+            rungLine.strip()
+            firstRung, secRung = rungLine.split("to")
+            secRung, s = secRung.split(".")
+            firstRung = int(firstRung)
+            secRung = int(secRung)
+            idx = RungIndex()
+            idx.fromRung = firstRung
+            idx.toRung = secRung
+            idx.fromIndex = i
+            rungIndexes.append(idx)
+    return rungIndexes
+
+        
+    
 
 # Prints statistics for entire log
 def printStats(bigSteps):
@@ -158,6 +220,14 @@ def getAllStepsTimes(bigSteps):
         timeList.append(getStepTime(step))
     return timeList
 
+def getRungStepsKeywordTimes(bigSteps, keyword):
+    timeList = []
+    for step in bigSteps:
+        for e in step[keyword]:
+            timeList.append(e)
+    return timeList
+
+
 ## CALCULATIONS ##
 
 # Prints a line with stats about the numbers in the list
@@ -244,31 +314,41 @@ def getBigStepsLines(fullLog):
     return bigStepsLines
     
 
-def createPlot(yAxis, xAxis, bigSteps, plotNum):
+def getDataForAxis(axis, bigSteps, sums):
+    if sums:
+        if axis == 'Step':
+            return range(len(bigSteps))
+        elif axis == 'TotalStepTime':
+            return getAllStepsTimes(bigSteps)
+        else:
+            return getAllStepsKeywordTimes(bigSteps, axis)
+    else:
+        return getRungStepsKeywordTimes(bigSteps, axis)
+
+
+def createPlot(yLogName, yAxis, xLogName, xAxis, plotNum, sums):
     colorList = ['r', 'g', 'b', 'c', 'm', 'y', 'k']
-    print  yAxis, "is", colorList[plotNum%7]
+    print  yLogName + "." + yAxis, "is", colorList[plotNum%7]
+   
     plot_line_style = "None"
-
-    if yAxis == 'Step':
-        yData = range(len(bigSteps))
-    elif yAxis == 'TotalStepTime':
-        yData = getAllStepsTimes(bigSteps)
-    else:
-        yData = getAllStepsKeywordTimes(bigSteps, yAxis)
-    
-    if xAxis == 'Step':
-        xData = range(len(bigSteps))
+    if yAxis.endswith("Step") or xAxis.endswith("Step"):
         plot_line_style = '-'
-    elif xAxis == 'TotalStepTime':
-        xData = getAllStepsTimes(bigSteps)
+    
+    # Set logs for each axis
+    bigStepsY = logList[yLogName]
+    bigStepsX = logList[xLogName]
+    
+    yData = getDataForAxis(yAxis, bigStepsY, sums)
+    if xAxis == 'Step' and not sums:
+        xData = range(len(yData))
     else:
-        xData = getAllStepsKeywordTimes(bigSteps, xAxis)
-
+        xData = getDataForAxis(xAxis, bigStepsX, sums)
+    
     plot = py.plot(xData, yData, color=colorList[plotNum%7], marker='o', ms=5.0, linestyle=plot_line_style)
     #leg = py.DraggableLegend([plot], [yAxis])
     #leg.draggable()
-    py.xlabel(xAxis)
-    py.ylabel(yAxis)
+    py.xlabel(xLogName + "." + xAxis)
+    py.ylabel(yLogName + "." + yAxis)
     py.show()
 
     
@@ -279,16 +359,16 @@ def printAxesList():
     print "Axes: ", AXES_LIST
     return
 
-def getCommand(bigSteps):
+def getCommand():
     print
     print
     printAxesList()
     print
+    print "Prefix exis name with <logname>. as in: <logname>.GravityTimes"
     print "Ready to plot."
     ri = ""
     plotNum = 0
     while True:
-        
         ri = raw_input("Choose your axes (y, x) or type exit: ")
         if (ri == 'exit') or (ri == 'quit'):
             break
@@ -300,13 +380,27 @@ def getCommand(bigSteps):
         else: 
             yAxis = yAxis.strip()
             xAxis = xAxis.strip()
-   
-            if (xAxis not in AXES_LIST) or (yAxis not in AXES_LIST):
-                print "Error: Unrecognized axis"
+            yLogName, yAxis = yAxis.split(".")
+            xLogName, xAxis = xAxis.split(".")
+            if (xLogName in logList and yLogName in logList):
+                if (xAxis not in AXES_LIST) or (yAxis not in AXES_LIST):
+                    print "Error: Unrecognized axis"
+                else:
+                    sums = getyn("Sum for each big step? ")
+                    createPlot(yLogName, yAxis, xLogName, xAxis, plotNum, sums)
+                    plotNum += 1
             else:
-                createPlot(yAxis, xAxis, bigSteps, plotNum)
-                plotNum += 1
+                print "Unregognized log name"
     return
+
+# TODO provide default value y or n
+def getyn(prompt):
+    ri = raw_input(prompt + "[Y/n]: ")
+    if ri == "n":
+        return False
+    else:
+        return True
+
 
 def main(*args):
     # get logfile names list from command line
@@ -324,6 +418,7 @@ def main(*args):
             
             parseLog(fullLog)
 
+    getCommand()
 
 if __name__ == '__main__':
     sys.exit(main(*sys.argv))

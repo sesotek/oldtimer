@@ -50,7 +50,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             logobject = ChangaLog(logLines)
             # Add ChangaLog and other metadata to openLogs
             self.openLogs.append( openLog(filename, self.getLogName(), logobject) )
-            # TODO: Update the mainwindow widgets to reflect new log?
+            # Update the mainwindow widgets to reflect new log
+            self.updateAxes()
+
+    def updateAxes(self):
+        self.comboYAxis.clear()
+        self.comboXAxis.clear()
+        self.comboYAxis.addItems( ["1", "2", "3" ] )
 
     def getLogName(self):
         text, ok = QInputDialog.getText(self, 'Log name', 'Enter log name:')

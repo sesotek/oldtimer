@@ -8,6 +8,7 @@ import pdb
 
 import sys
 import re
+import os
 import platform
 
 import numpy
@@ -32,6 +33,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Setup menu actions
         self.action_Open.triggered.connect(self.openFile)
 
+        # Set disabled plot button
+        self.buttonPlot.setEnabled(False)
+
     def openFile(self):
         filename, filtr = QtGui.QFileDialog.getOpenFileName(self)
         if filename:
@@ -49,21 +53,36 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             # Create ChangaLog
             logobject = ChangaLog(logLines)
             # Add ChangaLog and other metadata to openLogs
-            self.openLogs.append( openLog(filename, self.getLogName(), logobject) )
+            self.openLogs.append( openLog(filename, self.getLogName(filename), logobject) )
             # Update the mainwindow widgets to reflect new log
             self.updateAxes()
+            self.buttonPlot.setEnabled(True)
+            
+            # Make a new textEdit for each opened log
+            self.textEdit1.insertPlainText(''.join(logLines))
+
 
     def updateAxes(self):
         self.comboYAxis.clear()
         self.comboXAxis.clear()
-        self.comboYAxis.addItems( ["1", "2", "3" ] )
+        self.comboYAxisLog.clear()
+        self.comboXAxisLog.clear()
+        
+        for log in self.openLogs:
+            self.comboYAxisLog.addItem(log.logname)
+            self.comboXAxisLog.addItem(log.logname)
+        
+        self.comboYAxis.addItems(ChangaLog.AXES_LIST)
+        self.comboXAxis.addItems(ChangaLog.AXES_LIST)
 
-    def getLogName(self):
-        text, ok = QInputDialog.getText(self, 'Log name', 'Enter log name:')
-        if ok and text:
-            return text
-        else:
-            return self.DEFAULT_LOGNAME
+    def getLogName(self, filename):
+        goodname = False
+        while not goodname:
+            prompt = os.path.basename(filename) + "\n\n" + 'Enter a name for this log: '
+            name, ok = QInputDialog.getText(self, 'Log name', prompt)
+            if ok and name:
+                goodname = True
+        return name
 
 #### end GUI ####
 

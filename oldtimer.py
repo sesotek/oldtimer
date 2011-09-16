@@ -28,9 +28,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def __init__(self, parent=None):
         super(MainWindow, self).__init__(parent)
         self.setupUi(self)
-        
+     
         # List of openLog objects
         self.openLogs = []
+        
+        # List of plots
+        self.plots = []
         
         # Setup menu actions
         self.action_Open.triggered.connect(self.openFile)
@@ -64,8 +67,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.buttonPlot.setEnabled(True)
            
             # 
-            # Make a new textEdit for each opened log
-            self.textEdit1.insertPlainText(''.join(logLines))
+            # TODO: Make a new textEdit for each opened log
+        #    self.textEdit1.insertPlainText(''.join(logLines))
 
 
     def updateAxes(self):
@@ -104,13 +107,17 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         pointsX = []
         resolutionY = self.comboYResolution.currentText()
         resolutionX = self.comboXResolution.currentText()
+        axisYName = self.comboYAxis.currentText()
+        axisXName = self.comboXAxis.currentText()
+        logYName = self.comboYLog.currentText()
+        logXName = self.comboXLog.currentText()
         for log in self.openLogs:
-            if log.logname == self.comboYLog.currentText():
-                pointsY = log.logobject.getData(self.comboYAxis.currentText(), resolutionY)
-            if log.logname == self.comboXLog.currentText():
-                pointsX = log.logobject.getData(self.comboYAxis.currentText(), resolutionX)
+            if log.logname == logYName:
+                pointsY = log.logobject.getData(axisYName, resolutionY)
+            if log.logname == logXName:
+                pointsX = log.logobject.getData(axisXName, resolutionX)
 
-        createPlot(pointsY, pointsX, 'y axis', 'x axis')
+        createPlot(self.plots, pointsY, pointsX, logYName + '.' + axisYName, logXName + '.' + axisXName)
 
 
 #### end GUI ####
@@ -202,13 +209,17 @@ class ChangaLog():
 #    elif yAxis == 'TotalStepTime':
 #        yData = getAllStepsTimes(bigSteps)
 #    else:
-#        yData = getAllStepsKeywordTimes(bigSteps, yAxis)
-       if axis == 'Step':
-           if resolution == 'Big step':
-               return range(self.getNumBigSteps())
-           if resolution == 'Sub step':
-               return self.getNumSubSteps()
-       return range(100)
+#        yData = getAllStepsKeywordTimes(yAxis)
+        if axis == 'Step':
+            if resolution == 'Big step':
+                return range(self.getNumBigSteps())
+            if resolution == 'Sub step':
+                return self.getNumSubSteps()
+        elif axis == 'TotalStepTime':
+            return self.getAllStepsTimes()
+        else:
+            return self.getAllStepsKeywordTimes(axis)
+        
 
     # Prints statistics for entire log
     def printStats(self):
@@ -248,34 +259,34 @@ class ChangaLog():
         # total stats
         print " - - - - - - - - - -"
         # subtract one for init
-        print "Total Big steps: ", self.getNumBigSteps(self.bigSteps) - 1
+        print "Total Big steps: ", self.getNumBigSteps() - 1
     
         print "Total Domain Decomp times:      ", 
-        printListStats(self.getAllStepsKeywordTimes(self.bigSteps, 'DomainDecompTimes'))
+        printListStats(self.getAllStepsKeywordTimes('DomainDecompTimes'))
             
         print "Total LB times:                 ", 
-        printListStats(self.getAllStepsKeywordTimes(self.bigSteps, 'BalancerTimes'))
+        printListStats(self.getAllStepsKeywordTimes('BalancerTimes'))
             
         print "Total Build trees times:        ", 
-        printListStats(self.getAllStepsKeywordTimes(self.bigSteps, 'BuildTreesTimes'))
+        printListStats(self.getAllStepsKeywordTimes('BuildTreesTimes'))
     
         print "Total Gravity times:            ",
-        printListStats(self.getAllStepsKeywordTimes(self.bigSteps, 'GravityTimes'))
+        printListStats(self.getAllStepsKeywordTimes('GravityTimes'))
      
         print "Total Density times:            ",
-        printListStats(self.getAllStepsKeywordTimes(self.bigSteps, 'DensityTimes'))
+        printListStats(self.getAllStepsKeywordTimes('DensityTimes'))
        
         print "Total Mark Neighbor times:      ",
-        printListStats(self.getAllStepsKeywordTimes(self.bigSteps, 'MarkNeighborTimes'))
+        printListStats(self.getAllStepsKeywordTimes('MarkNeighborTimes'))
             
         print "Total Density of Neighbor times:",
-        printListStats(self.getAllStepsKeywordTimes(self.bigSteps, 'DensityOfNeighborTimes'))
+        printListStats(self.getAllStepsKeywordTimes('DensityOfNeighborTimes'))
             
         print "Total Pressure Gradient times:  ",
-        printListStats(self.getAllStepsKeywordTimes(self.bigSteps, 'PressureGradientTimes'))
+        printListStats(self.getAllStepsKeywordTimes('PressureGradientTimes'))
         
         print "Total Big Step (r) times:       ",
-        printListStats(self.getAllStepsTimes(self.bigSteps))
+        printListStats(self.getAllStepsTimes())
     
         return
     
@@ -301,15 +312,15 @@ class ChangaLog():
     ## LOGFILE ALL STEPS TOTALS ##
         
     # Returns total balancer time for list of steps                
-    def getAllStepsKeywordTimes(self, bigSteps, keyword):
+    def getAllStepsKeywordTimes(self, keyword):
         timeList = []
-        for step in bigSteps:
+        for step in self.bigSteps:
             timeList.append(calcSum(step[keyword]))
         return timeList
     
-    def getAllStepsTimes(self, bigSteps):
+    def getAllStepsTimes(self):
         timeList = []
-        for step in bigSteps:
+        for step in self.bigSteps:
             timeList.append(self.getStepTime(step))
         return timeList
     
@@ -365,7 +376,7 @@ def printTitle(f):
     
     
 
-def createPlot(dataY, dataX, axisY, axisX):
+def createPlot(plots, dataY, dataX, axisY, axisX):
     colorList = ['r', 'g', 'b', 'c', 'm', 'y', 'k']
 #    print  yAxis, "is", colorList[plotNum%7]
     plot_line_style = "None"
@@ -375,7 +386,7 @@ def createPlot(dataY, dataX, axisY, axisX):
 #    elif yAxis == 'TotalStepTime':
 #        yData = getAllStepsTimes(bigSteps)
 #    else:
-#        yData = getAllStepsKeywordTimes(bigSteps, yAxis)
+#        yData = getAllStepsKeywordTimes(yAxis)
 #    
 #    if xAxis == 'Step':
 #        xData = range(len(bigSteps))
@@ -383,19 +394,18 @@ def createPlot(dataY, dataX, axisY, axisX):
 #    elif xAxis == 'TotalStepTime':
 #        xData = getAllStepsTimes(bigSteps)
 #    else:
-#        xData = getAllStepsKeywordTimes(bigSteps, xAxis)
+#        xData = getAllStepsKeywordTimes(xAxis)
 
 #    plot = py.plot(xData, yData, color=colorList[plotNum%7], marker='o', ms=5.0, linestyle=plot_line_style)
     #py.close()
-
-
-    plot = py.plot(dataX, dataY, marker='o', ms=5.0, linestyle=plot_line_style)
-    #leg = py.DraggableLegend([plot], [yAxis])
-    #leg.draggable()
+    
+    plots.append(py.plot(dataX, dataY, marker='o', ms=5.0, linestyle=plot_line_style, label=axisY))
+    leg = py.legend()
+    leg.draggable()
     py.xlabel(axisX)
     py.ylabel(axisY)
     py.draw()
-   # py.show()
+    py.show()
     
     return
     

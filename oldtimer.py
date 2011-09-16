@@ -11,6 +11,8 @@ import re
 import os
 import platform
 
+import matplotlib
+
 import numpy
 import pylab as py
 
@@ -32,6 +34,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         
         # Setup menu actions
         self.action_Open.triggered.connect(self.openFile)
+
+        # Setup button actions
+        self.buttonPlot.clicked.connect(self.plot)
 
         # Set disabled plot button
         self.buttonPlot.setEnabled(False)
@@ -57,7 +62,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             # Update the mainwindow widgets to reflect new log
             self.updateAxes()
             self.buttonPlot.setEnabled(True)
-            
+           
+            # 
             # Make a new textEdit for each opened log
             self.textEdit1.insertPlainText(''.join(logLines))
 
@@ -65,15 +71,18 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def updateAxes(self):
         self.comboYAxis.clear()
         self.comboXAxis.clear()
-        self.comboYAxisLog.clear()
-        self.comboXAxisLog.clear()
+        self.comboYLog.clear()
+        self.comboXLog.clear()
         
         for log in self.openLogs:
-            self.comboYAxisLog.addItem(log.logname)
-            self.comboXAxisLog.addItem(log.logname)
+            self.comboYLog.addItem(log.logname)
+            self.comboXLog.addItem(log.logname)
         
         self.comboYAxis.addItems(ChangaLog.AXES_LIST)
         self.comboXAxis.addItems(ChangaLog.AXES_LIST)
+        self.comboYResolution.addItems(ChangaLog.RESOLUTION_LIST)
+        self.comboXResolution.addItems(ChangaLog.RESOLUTION_LIST)
+    
 
     def getLogName(self, filename):
         goodname = False
@@ -81,10 +90,40 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             prompt = os.path.basename(filename) + "\n\n" + 'Enter a name for this log: '
             name, ok = QInputDialog.getText(self, 'Log name', prompt)
             if ok and name:
-                goodname = True
+                if name in [log.logname for log in self.openLogs]:
+                    msgBox = QMessageBox()
+                    msgBox.setText('Choose a unique name')
+                    msgBox.exec_()
+                else:
+                    goodname = True
         return name
+    
+    def plot(self):
+        # Call createPlot with data points from logs and axes specified by comboboxes
+        pointsY = [] 
+        pointsX = []
+        resolutionY = self.comboYResolution.currentText()
+        resolutionX = self.comboXResolution.currentText()
+        for log in self.openLogs:
+            if log.logname == self.comboYLog.currentText():
+                pointsY = log.logobject.getData(self.comboYAxis.currentText(), resolutionY)
+            if log.logname == self.comboXLog.currentText():
+                pointsX = log.logobject.getData(self.comboYAxis.currentText(), resolutionX)
+
+        createPlot(pointsY, pointsX, 'y axis', 'x axis')
+
 
 #### end GUI ####
+# Class RungIndex keeps info about a step on a rung, such as
+# the rung number from and to which the step is calculated, and the
+# line numbers of beginning and end of rung step in the log.
+class RungIndex:
+    def __init__(self):
+        self.fromRung = -1
+        self.toRung = -1
+        self.fromIndex = -1
+    def __repr__(self):
+        return "rung: " + str(self.fromRung) + " to " + str(self.toRung) + " at index " + str(self.fromIndex)
 
 # Struct containing metadata about an open log
 class openLog():
@@ -113,7 +152,10 @@ class ChangaLog():
     RE_SUB_STEP = '^Step:'
     
     # List of Axes
-    AXES_LIST = [ 'Step', 'TotalStepTime', 'DomainDecompTimes', 'BalancerTimes', 'BuildTreesTimes', 'GravityTimes', 'DensityTimes', 'MarkNeighborTimes', 'DensityOfNeighborTimes', 'PressureGradientTimes' ]
+    AXES_LIST = ['Step', 'TotalStepTime', 'DomainDecompTimes', 'BalancerTimes', 'BuildTreesTimes', 'GravityTimes', 'DensityTimes', 'MarkNeighborTimes', 'DensityOfNeighborTimes', 'PressureGradientTimes']
+
+    # List of resolutions
+    RESOLUTION_LIST = ['Big step', 'Sub step']
 
     def __init__(self, loglines):
         self.parselog(loglines)
@@ -143,7 +185,7 @@ class ChangaLog():
             bigStep['DensityOfNeighborTimes'] = self.getStepKeywordTimes(bigStep, ChangaLog.RE_DENSITY_OF_NEIGHBOR)
             bigStep['PressureGradientTimes'] = self.getStepKeywordTimes(bigStep, ChangaLog.RE_PRESSURE_GRADIENT)
         
-        self.printStats()
+#        self.printStats()
     
         #self.getCommand(bigSteps)
     
@@ -152,6 +194,21 @@ class ChangaLog():
     # Returns a list of axis names that this log recognizes as plottable
     def getAxes(self):
         return ChangaLog.AXES_LIST
+
+    # Returns a list of data points for this log for the specified axis
+    def getData(self, axis, resolution):
+#    if yAxis == 'Step':
+#        yData = range(len(bigSteps))
+#    elif yAxis == 'TotalStepTime':
+#        yData = getAllStepsTimes(bigSteps)
+#    else:
+#        yData = getAllStepsKeywordTimes(bigSteps, yAxis)
+       if axis == 'Step':
+           if resolution == 'Big step':
+               return range(self.getNumBigSteps())
+           if resolution == 'Sub step':
+               return self.getNumSubSteps()
+       return range(100)
 
     # Prints statistics for entire log
     def printStats(self):
@@ -261,8 +318,8 @@ class ChangaLog():
 
     # Returns the number of big steps in the list of big steps
     # list bigSteps: list of big step dictionaries
-    def getNumBigSteps(self, bigSteps):
-        return len(bigSteps)
+    def getNumBigSteps(self):
+        return len(self.bigSteps)
     
     # Returns a list of file objects where each object is a Big step
     # list fullLog: list of lines in logfile
@@ -308,32 +365,37 @@ def printTitle(f):
     
     
 
-def createPlot(yAxis, xAxis, bigSteps, plotNum):
+def createPlot(dataY, dataX, axisY, axisX):
     colorList = ['r', 'g', 'b', 'c', 'm', 'y', 'k']
-    print  yAxis, "is", colorList[plotNum%7]
+#    print  yAxis, "is", colorList[plotNum%7]
     plot_line_style = "None"
 
-    if yAxis == 'Step':
-        yData = range(len(bigSteps))
-    elif yAxis == 'TotalStepTime':
-        yData = getAllStepsTimes(bigSteps)
-    else:
-        yData = getAllStepsKeywordTimes(bigSteps, yAxis)
-    
-    if xAxis == 'Step':
-        xData = range(len(bigSteps))
-        plot_line_style = '-'
-    elif xAxis == 'TotalStepTime':
-        xData = getAllStepsTimes(bigSteps)
-    else:
-        xData = getAllStepsKeywordTimes(bigSteps, xAxis)
+#    if yAxis == 'Step':
+#        yData = range(len(bigSteps))
+#    elif yAxis == 'TotalStepTime':
+#        yData = getAllStepsTimes(bigSteps)
+#    else:
+#        yData = getAllStepsKeywordTimes(bigSteps, yAxis)
+#    
+#    if xAxis == 'Step':
+#        xData = range(len(bigSteps))
+#        plot_line_style = '-'
+#    elif xAxis == 'TotalStepTime':
+#        xData = getAllStepsTimes(bigSteps)
+#    else:
+#        xData = getAllStepsKeywordTimes(bigSteps, xAxis)
 
-    plot = py.plot(xData, yData, color=colorList[plotNum%7], marker='o', ms=5.0, linestyle=plot_line_style)
+#    plot = py.plot(xData, yData, color=colorList[plotNum%7], marker='o', ms=5.0, linestyle=plot_line_style)
+    #py.close()
+
+
+    plot = py.plot(dataX, dataY, marker='o', ms=5.0, linestyle=plot_line_style)
     #leg = py.DraggableLegend([plot], [yAxis])
     #leg.draggable()
-    py.xlabel(xAxis)
-    py.ylabel(yAxis)
-    py.show()
+    py.xlabel(axisX)
+    py.ylabel(axisY)
+    py.draw()
+   # py.show()
     
     return
     

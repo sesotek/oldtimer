@@ -117,7 +117,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             if log.logname == logXName:
                 pointsX = log.logobject.getData(axisXName, resolutionX)
 
-        createPlot(self.plots, pointsY, pointsX, logYName + '.' + axisYName, logXName + '.' + axisXName)
+        createPlot(self.plots, pointsY, pointsX, logYName + '.' + axisYName, logXName + '.' + axisXName, self.checkBoxConnect.isChecked())
 
 
 #### end GUI ####
@@ -191,12 +191,35 @@ class ChangaLog():
             bigStep['MarkNeighborTimes'] = self.getStepKeywordTimes(bigStep, ChangaLog.RE_MARK_NEIGHBOR)
             bigStep['DensityOfNeighborTimes'] = self.getStepKeywordTimes(bigStep, ChangaLog.RE_DENSITY_OF_NEIGHBOR)
             bigStep['PressureGradientTimes'] = self.getStepKeywordTimes(bigStep, ChangaLog.RE_PRESSURE_GRADIENT)
+            # Rung indexes stored as a list of rung objects
+            bigStep['RungIndexes'] = self.getRungIndexes(bigStep)    
+            print bigStep['RungIndexes']
         
-#        self.printStats()
+        self.printStats()
     
         #self.getCommand(bigSteps)
     
         return
+
+    # TODO: this is very dirty, clean up rung search
+    def getRungIndexes(self, bigStep):
+        rungIndexes = []
+        lastIdx = -1
+        for i, line in enumerate(bigStep['LogLines']):
+            if "Rungs" in line:
+                # dirty part to fix
+                s, rungLine = line.split("Rungs")
+                rungLine.strip()
+                firstRung, secRung = rungLine.split("to")
+                secRung, s = secRung.split(".")
+                firstRung = int(firstRung)
+                secRung = int(secRung)
+                idx = RungIndex()
+                idx.fromRung = firstRung
+                idx.toRung = secRung
+                idx.fromIndex = i
+                rungIndexes.append(idx)
+        return rungIndexes
 
     # Returns a list of axis names that this log recognizes as plottable
     def getAxes(self):
@@ -204,21 +227,18 @@ class ChangaLog():
 
     # Returns a list of data points for this log for the specified axis
     def getData(self, axis, resolution):
-#    if yAxis == 'Step':
-#        yData = range(len(bigSteps))
-#    elif yAxis == 'TotalStepTime':
-#        yData = getAllStepsTimes(bigSteps)
-#    else:
-#        yData = getAllStepsKeywordTimes(yAxis)
         if axis == 'Step':
             if resolution == 'Big step':
                 return range(self.getNumBigSteps())
-            if resolution == 'Sub step':
-                return self.getNumSubSteps()
+            elif resolution == 'Sub step':
+                return range(self.getNumSubSteps())
         elif axis == 'TotalStepTime':
             return self.getAllStepsTimes()
         else:
-            return self.getAllStepsKeywordTimes(axis)
+            if resolution == 'Big step':
+                return self.getAllStepsKeywordTimes(axis)
+            elif resolution == 'Sub step':
+                return self.getRungStepsKeywordTimes(axis)
         
 
     # Prints statistics for entire log
@@ -317,7 +337,14 @@ class ChangaLog():
         for step in self.bigSteps:
             timeList.append(calcSum(step[keyword]))
         return timeList
-    
+ 
+    def getRungStepsKeywordTimes(self, keyword):
+        timeList = []
+        for step in self.bigSteps:
+            for e in step[keyword]:
+                timeList.append(e)
+        return timeList
+   
     def getAllStepsTimes(self):
         timeList = []
         for step in self.bigSteps:
@@ -331,6 +358,13 @@ class ChangaLog():
     # list bigSteps: list of big step dictionaries
     def getNumBigSteps(self):
         return len(self.bigSteps)
+
+    def getNumSubSteps(self):
+        steps = 0
+        for step in self.bigSteps:
+            for e in step['GravityTimes']:
+                steps += 1
+        return steps
     
     # Returns a list of file objects where each object is a Big step
     # list fullLog: list of lines in logfile
@@ -376,10 +410,13 @@ def printTitle(f):
     
     
 
-def createPlot(plots, dataY, dataX, axisY, axisX):
+def createPlot(plots, dataY, dataX, axisY, axisX, connect):
     colorList = ['r', 'g', 'b', 'c', 'm', 'y', 'k']
 #    print  yAxis, "is", colorList[plotNum%7]
-    plot_line_style = "None"
+    if connect:
+        plot_line_style = '-'
+    else:
+        plot_line_style = "None"
 
 #    if yAxis == 'Step':
 #        yData = range(len(bigSteps))

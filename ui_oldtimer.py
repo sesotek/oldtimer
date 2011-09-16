@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'oldtimer.ui'
 #
-# Created: Thu Sep 15 18:53:53 2011
+# Created: Fri Sep 16 00:22:44 2011
 #      by: pyside-uic 0.2.8 running on PySide 1.0.1
 #
 # WARNING! All changes made in this file will be lost!
@@ -12,7 +12,7 @@ from PySide import QtCore, QtGui
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(703, 738)
+        MainWindow.resize(772, 722)
         sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Preferred)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
@@ -28,7 +28,7 @@ class Ui_MainWindow(object):
         self.centralwidget.setSizePolicy(sizePolicy)
         self.centralwidget.setObjectName("centralwidget")
         self.buttonQuit = QtGui.QPushButton(self.centralwidget)
-        self.buttonQuit.setGeometry(QtCore.QRect(9, 655, 85, 27))
+        self.buttonQuit.setGeometry(QtCore.QRect(401, 490, 80, 27))
         sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
@@ -38,7 +38,7 @@ class Ui_MainWindow(object):
         self.buttonQuit.setFlat(False)
         self.buttonQuit.setObjectName("buttonQuit")
         self.widget = QtGui.QWidget(self.centralwidget)
-        self.widget.setGeometry(QtCore.QRect(20, 30, 299, 118))
+        self.widget.setGeometry(QtCore.QRect(20, 30, 342, 118))
         self.widget.setObjectName("widget")
         self.gridLayoutPlotSettings = QtGui.QGridLayout(self.widget)
         self.gridLayoutPlotSettings.setSizeConstraint(QtGui.QLayout.SetMinimumSize)
@@ -115,8 +115,12 @@ class Ui_MainWindow(object):
         self.comboXResolution = QtGui.QComboBox(self.widget)
         self.comboXResolution.setObjectName("comboXResolution")
         self.gridLayoutPlotSettings.addWidget(self.comboXResolution, 2, 3, 1, 1)
+        self.checkBoxConnect = QtGui.QCheckBox(self.widget)
+        self.checkBoxConnect.setChecked(True)
+        self.checkBoxConnect.setObjectName("checkBoxConnect")
+        self.gridLayoutPlotSettings.addWidget(self.checkBoxConnect, 3, 2, 1, 1)
         self.widget1 = QtGui.QWidget(self.centralwidget)
-        self.widget1.setGeometry(QtCore.QRect(180, 390, 525, 317))
+        self.widget1.setGeometry(QtCore.QRect(20, 160, 461, 317))
         self.widget1.setObjectName("widget1")
         self.gridLayout_2 = QtGui.QGridLayout(self.widget1)
         self.gridLayout_2.setContentsMargins(0, 0, 0, 0)
@@ -150,9 +154,10 @@ class Ui_MainWindow(object):
         self.textEdit2.setObjectName("textEdit2")
         self.gridLayout_2.addWidget(self.textEdit2, 2, 1, 1, 1)
         self.gridLayout_2.setColumnStretch(0, 1)
+        self.gridLayout_2.setColumnStretch(1, 1)
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtGui.QMenuBar(MainWindow)
-        self.menubar.setGeometry(QtCore.QRect(0, 0, 703, 25))
+        self.menubar.setGeometry(QtCore.QRect(0, 0, 772, 25))
         self.menubar.setObjectName("menubar")
         self.menu_File = QtGui.QMenu(self.menubar)
         self.menu_File.setObjectName("menu_File")
@@ -182,6 +187,7 @@ class Ui_MainWindow(object):
         self.label.setText(QtGui.QApplication.translate("MainWindow", "Log", None, QtGui.QApplication.UnicodeUTF8))
         self.label_2.setText(QtGui.QApplication.translate("MainWindow", "Axis", None, QtGui.QApplication.UnicodeUTF8))
         self.label_3.setText(QtGui.QApplication.translate("MainWindow", "Resolution", None, QtGui.QApplication.UnicodeUTF8))
+        self.checkBoxConnect.setText(QtGui.QApplication.translate("MainWindow", "Connect points", None, QtGui.QApplication.UnicodeUTF8))
         self.menu_File.setTitle(QtGui.QApplication.translate("MainWindow", "&File", None, QtGui.QApplication.UnicodeUTF8))
         self.action_Open.setText(QtGui.QApplication.translate("MainWindow", "&Open", None, QtGui.QApplication.UnicodeUTF8))
         self.actionE_xit.setText(QtGui.QApplication.translate("MainWindow", "E&xit", None, QtGui.QApplication.UnicodeUTF8))

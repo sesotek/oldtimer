@@ -194,7 +194,7 @@ class ChangaLog():
             # Rung indexes stored as a list of rung objects
             bigStep['RungIndexes'] = self.getRungIndexes(bigStep)    
             print bigStep['RungIndexes']
-        
+
         self.printStats()
     
         #self.getCommand(bigSteps)
@@ -251,28 +251,28 @@ class ChangaLog():
                 print "Big step: ", bigStep['StepNumber']
      
             print "  Domain Decomp time:      ", 
-            printListStats(bigStep['DomainDecompTimes'])
+            printListStats([num for idx, num in bigStep['DomainDecompTimes']])
             
             print "  LB time:                 ", 
-            printListStats(bigStep['BalancerTimes'])
+            printListStats([num for idx, num in bigStep['BalancerTimes']])
             
             print "  Build trees time:        ", 
-            printListStats(bigStep['BuildTreesTimes'])
+            printListStats([num for idx, num in bigStep['BuildTreesTimes']])
     
             print "  Gravity time:            ",
-            printListStats(bigStep['GravityTimes'])
+            printListStats([num for idx, num in bigStep['GravityTimes']])
      
             print "  Density time:            ",
-            printListStats(bigStep['DensityTimes'])
+            printListStats([num for idx, num in bigStep['DensityTimes']])
        
             print "  Mark Neighbor time:      ",
-            printListStats(bigStep['MarkNeighborTimes'])
+            printListStats([num for idx, num in bigStep['MarkNeighborTimes']])
             
             print "  Density of Neighbor time:",
-            printListStats(bigStep['DensityOfNeighborTimes'])
+            printListStats([num for idx, num in bigStep['DensityOfNeighborTimes']])
             
             print "  Pressure Gradient time:  ",
-            printListStats(bigStep['PressureGradientTimes'])
+            printListStats([num for idx, num in bigStep['PressureGradientTimes']])
             
             print "  Big step time (r):       ", bigStep['TotalStepTime']
     
@@ -312,11 +312,11 @@ class ChangaLog():
     
     def getStepKeywordTimes(self, step, keyword):
         timeList = []
-        for line in step['LogLines']:
+        for index, line in enumerate(step['LogLines']):
             if keyword in line:
                 p = re.search(ChangaLog.RE_TOOK_SECONDS, line)
                 if p is not None:
-                    timeList.append(float(p.group()))
+                    timeList.append([index, float(p.group())])
         return timeList
     
     # Returns the total time reported for a single big step ('Big step 1 took 10.0 seconds')
@@ -335,13 +335,13 @@ class ChangaLog():
     def getAllStepsKeywordTimes(self, keyword):
         timeList = []
         for step in self.bigSteps:
-            timeList.append(calcSum(step[keyword]))
+            timeList.append(calcSum([num for idx, num in step[keyword]]))
         return timeList
  
     def getRungStepsKeywordTimes(self, keyword):
         timeList = []
         for step in self.bigSteps:
-            for e in step[keyword]:
+            for e in [num for idx, num in step[keyword]]:      # time is [1]
                 timeList.append(e)
         return timeList
    
@@ -411,31 +411,11 @@ def printTitle(f):
     
 
 def createPlot(plots, dataY, dataX, axisY, axisX, connect):
-    colorList = ['r', 'g', 'b', 'c', 'm', 'y', 'k']
-#    print  yAxis, "is", colorList[plotNum%7]
     if connect:
         plot_line_style = '-'
     else:
         plot_line_style = "None"
 
-#    if yAxis == 'Step':
-#        yData = range(len(bigSteps))
-#    elif yAxis == 'TotalStepTime':
-#        yData = getAllStepsTimes(bigSteps)
-#    else:
-#        yData = getAllStepsKeywordTimes(yAxis)
-#    
-#    if xAxis == 'Step':
-#        xData = range(len(bigSteps))
-#        plot_line_style = '-'
-#    elif xAxis == 'TotalStepTime':
-#        xData = getAllStepsTimes(bigSteps)
-#    else:
-#        xData = getAllStepsKeywordTimes(xAxis)
-
-#    plot = py.plot(xData, yData, color=colorList[plotNum%7], marker='o', ms=5.0, linestyle=plot_line_style)
-    #py.close()
-    
     plots.append(py.plot(dataX, dataY, marker='o', ms=5.0, linestyle=plot_line_style, label=axisY))
     leg = py.legend()
     leg.draggable()
@@ -500,6 +480,7 @@ def calcAverage(flist):
     return numpy.mean(flist)
 
 def calcSum(flist):
+    print flist
     if not list:
         return 0.0
     return sum(flist)

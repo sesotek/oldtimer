@@ -32,9 +32,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # List of openLog objects
         self.openLogs = []
         
-        # List of plots
-        self.plots = []
-        
         # Setup menu actions
         self.action_Open.triggered.connect(self.openFile)
 
@@ -73,18 +70,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def updateAxes(self):
         self.comboYAxis.clear()
-        self.comboXAxis.clear()
         self.comboYLog.clear()
-        self.comboXLog.clear()
-        
+        self.comboResolution.clear()
+
         for log in self.openLogs:
             self.comboYLog.addItem(log.logname)
-            self.comboXLog.addItem(log.logname)
         
         self.comboYAxis.addItems(ChangaLog.AXES_LIST)
-        self.comboXAxis.addItems(ChangaLog.AXES_LIST)
-        self.comboYResolution.addItems(ChangaLog.RESOLUTION_LIST)
-        self.comboXResolution.addItems(ChangaLog.RESOLUTION_LIST)
+        self.comboResolution.addItems(ChangaLog.RESOLUTION_LIST)
     
 
     def getLogName(self, filename):
@@ -103,21 +96,31 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     
     def plot(self):
         # Call createPlot with data points from logs and axes specified by comboboxes
-        pointsY = [] 
-        pointsX = []
-        resolutionY = self.comboYResolution.currentText()
-        resolutionX = self.comboXResolution.currentText()
+        points = [] 
+        resolution = self.comboResolution.currentText()
         axisYName = self.comboYAxis.currentText()
-        axisXName = self.comboXAxis.currentText()
         logYName = self.comboYLog.currentText()
-        logXName = self.comboXLog.currentText()
-        for log in self.openLogs:
-            if log.logname == logYName:
-                pointsY = log.logobject.getData(axisYName, resolutionY)
-            if log.logname == logXName:
-                pointsX = log.logobject.getData(axisXName, resolutionX)
 
-        createPlot(self.plots, pointsY, pointsX, logYName + '.' + axisYName, logXName + '.' + axisXName, self.checkBoxConnect.isChecked())
+        if resolution == 'Big step' or resolution == 'Sub step':
+            for log in self.openLogs:
+                if log.logname == logYName:
+                    points = log.logobject.getData(axisYName, resolution)
+
+#            if len(pointsY) != len(pointsX):
+#                msgBox = QMessageBox()
+#                msgBox.setText("Y and X axis data not of equal length\n\nY: " + str(len(pointsY)) + "\nX: " + str(len(pointsX)))
+#                msgBox.exec_()
+#                return
+
+            createPlot(points[0], points[1], logYName + '.' + axisYName, resolution, self.checkBoxConnect.isChecked())
+
+        elif resolution == 'Summed rungs':
+            for log in self.openLogs:
+                if log.logname == logYName:
+                    points = log.logobject.getSummedRungs(axisYName)
+
+            createBarPlot(points[0], points[1], logYName + '.' + axisYName, resolution)
+
 
 
 #### end GUI ####
@@ -159,10 +162,10 @@ class ChangaLog():
     RE_SUB_STEP = '^Step:'
     
     # List of Axes
-    AXES_LIST = ['Step', 'TotalStepTime', 'DomainDecompTimes', 'BalancerTimes', 'BuildTreesTimes', 'GravityTimes', 'DensityTimes', 'MarkNeighborTimes', 'DensityOfNeighborTimes', 'PressureGradientTimes']
+    AXES_LIST = ['TotalStepTime', 'DomainDecompTimes', 'BalancerTimes', 'BuildTreesTimes', 'GravityTimes', 'DensityTimes', 'MarkNeighborTimes', 'DensityOfNeighborTimes', 'PressureGradientTimes']
 
     # List of resolutions
-    RESOLUTION_LIST = ['Big step', 'Sub step']
+    RESOLUTION_LIST = ['Big step', 'Sub step', 'Summed rungs']
 
     def __init__(self, loglines):
         self.parselog(loglines)
@@ -225,21 +228,41 @@ class ChangaLog():
     def getAxes(self):
         return ChangaLog.AXES_LIST
 
-    # Returns a list of data points for this log for the specified axis
+    # Returns a list  2 lists, [0] is Y axis points, [1] is X axis points (or tick names), for this log for the specified axis
     def getData(self, axis, resolution):
-        if axis == 'Step':
-            if resolution == 'Big step':
-                return range(self.getNumBigSteps())
-            elif resolution == 'Sub step':
-                return range(self.getNumSubSteps())
-        elif axis == 'TotalStepTime':
-            return self.getAllStepsTimes()
-        else:
-            if resolution == 'Big step':
-                return self.getAllStepsKeywordTimes(axis)
-            elif resolution == 'Sub step':
-                return self.getRungStepsKeywordTimes(axis)
+        y = []
+        x = []
+        if resolution == 'Big step':
+            if axis == 'TotalStepTime':
+                y = self.getAllStepsTimes()
+            else:
+                y = self.getAllStepsKeywordTimes(axis)
+            x = range(len(y))
+        elif resolution == 'Sub step':
+            y = self.getSubStepsKeywordTimes(axis)
+            x = range(len(y))
         
+        return [y, x]
+
+    # Returns [y, x],  where:
+    #   y ~= [
+    #   x ~= ['Rung 3 to 4']
+    def getSummedRungs(self, axis):
+        y = []
+        x = []
+        rungsTimes = []
+        for step in self.bigSteps:
+            for rung in step['RungIndexes']:
+                rungTime = {}
+                summedRungList = []
+                rungTime[rung.fromRung]
+            print step[axis]
+            print step['RungIndexes']
+        return [y, x]
+    
+    def getStepKeywordTotalTimeBetweenIndexes(self, fromIndex, toIndex):
+        times = []
+        return times
 
     # Prints statistics for entire log
     def printStats(self):
@@ -338,7 +361,7 @@ class ChangaLog():
             timeList.append(calcSum([num for idx, num in step[keyword]]))
         return timeList
  
-    def getRungStepsKeywordTimes(self, keyword):
+    def getSubStepsKeywordTimes(self, keyword):
         timeList = []
         for step in self.bigSteps:
             for e in [num for idx, num in step[keyword]]:      # time is [1]
@@ -408,15 +431,14 @@ def printTitle(f):
     f.seek(0)
     return
     
-    
 
-def createPlot(plots, dataY, dataX, axisY, axisX, connect):
+def createPlot(dataY, dataX, axisY, axisX, connect):
     if connect:
         plot_line_style = '-'
     else:
         plot_line_style = "None"
 
-    plots.append(py.plot(dataX, dataY, marker='o', ms=5.0, linestyle=plot_line_style, label=axisY))
+    py.plot(dataX, dataY, marker='o', ms=5.0, linestyle=plot_line_style, label=axisY)
     leg = py.legend()
     leg.draggable()
     py.xlabel(axisX)
@@ -426,6 +448,12 @@ def createPlot(plots, dataY, dataX, axisY, axisX, connect):
     
     return
     
+def createBarPlot(dataY, dataX, axisY, axisX):
+    x = py.arange(len(dataY))
+    py.bar(x, dataY)
+    py.xticks(x + 0.5, dataX)
+    py.show()
+
     
 
 #def getCommand(bigSteps):
@@ -480,7 +508,6 @@ def calcAverage(flist):
     return numpy.mean(flist)
 
 def calcSum(flist):
-    print flist
     if not list:
         return 0.0
     return sum(flist)

@@ -57,13 +57,13 @@
      <bool>false</bool>
     </property>
    </widget>
-   <widget class="QWidget" name="">
+   <widget class="QWidget" name="layoutWidget">
     <property name="geometry">
      <rect>
       <x>20</x>
       <y>30</y>
       <width>342</width>
-      <height>118</height>
+      <height>91</height>
      </rect>
     </property>
     <layout class="QGridLayout" name="gridLayoutPlotSettings" columnstretch="0,0,0,0">
@@ -76,47 +76,6 @@
      <property name="horizontalSpacing">
       <number>6</number>
      </property>
-     <item row="2" column="0">
-      <widget class="QLabel" name="labelXaxis">
-       <property name="font">
-        <font>
-         <kerning>false</kerning>
-        </font>
-       </property>
-       <property name="text">
-        <string>X Axis:</string>
-       </property>
-       <property name="alignment">
-        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-       </property>
-      </widget>
-     </item>
-     <item row="2" column="1">
-      <widget class="QComboBox" name="comboXLog">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="sizeAdjustPolicy">
-        <enum>QComboBox::AdjustToContents</enum>
-       </property>
-      </widget>
-     </item>
-     <item row="2" column="2">
-      <widget class="QComboBox" name="comboXAxis">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="sizeAdjustPolicy">
-        <enum>QComboBox::AdjustToContents</enum>
-       </property>
-      </widget>
-     </item>
      <item row="1" column="0">
       <widget class="QLabel" name="labelYaxis">
        <property name="text">
@@ -127,7 +86,7 @@
        </property>
       </widget>
      </item>
-     <item row="3" column="1">
+     <item row="2" column="1">
       <widget class="QPushButton" name="buttonPlot">
        <property name="enabled">
         <bool>false</bool>
@@ -183,20 +142,7 @@
        </property>
       </widget>
      </item>
-     <item row="0" column="3">
-      <widget class="QLabel" name="label_3">
-       <property name="text">
-        <string>Resolution</string>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="3">
-      <widget class="QComboBox" name="comboYResolution"/>
-     </item>
-     <item row="2" column="3">
-      <widget class="QComboBox" name="comboXResolution"/>
-     </item>
-     <item row="3" column="2">
+     <item row="2" column="2">
       <widget class="QCheckBox" name="checkBoxConnect">
        <property name="text">
         <string>Connect points</string>
@@ -206,9 +152,19 @@
        </property>
       </widget>
      </item>
+     <item row="0" column="3">
+      <widget class="QLabel" name="labelResolution">
+       <property name="text">
+        <string>Resolution</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="3">
+      <widget class="QComboBox" name="comboResolution"/>
+     </item>
     </layout>
    </widget>
-   <widget class="QWidget" name="">
+   <widget class="QWidget" name="layoutWidget">
     <property name="geometry">
      <rect>
       <x>20</x>

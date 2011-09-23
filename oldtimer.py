@@ -13,7 +13,7 @@ import platform
 
 import matplotlib
 
-import numpy
+import numpy as np
 import pylab as py
 
 # PySide imports
@@ -31,6 +31,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
      
         # List of openLog objects
         self.openLogs = []
+
+        # List of bar plots, because py.bar() doesn't draw new bars next to preexisting data
+        self.barPlots = []
         
         # Setup menu actions
         self.action_Open.triggered.connect(self.openFile)
@@ -119,7 +122,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 if log.logname == logYName:
                     points = log.logobject.getSummedRungs(axisYName)
 
-            createBarPlot(points[0], points[1], logYName + '.' + axisYName, resolution)
+            createBarPlot(self.barPlots, points[0], points[1], logYName + '.' + axisYName, resolution)
 
 
 
@@ -132,8 +135,11 @@ class RungIndex:
         self.fromRung = -1
         self.toRung = -1
         self.fromIndex = -1
+        self.toIndex = -1
+        self.gravityActive = -1
+        self.gasActive = -1
     def __repr__(self):
-        return "rung: " + str(self.fromRung) + " to " + str(self.toRung) + " at index " + str(self.fromIndex)
+        return "rung: " + str(self.fromRung) + " to " + str(self.toRung) + " from index " + str(self.fromIndex) + " to " + str(self.toIndex) + "(Gravity: " + str(self.gravityActive) + ")"
 
 # Struct containing metadata about an open log
 class openLog():
@@ -160,7 +166,8 @@ class ChangaLog():
     RE_DOMAIN_DECOMP = 'Domain decomposition'
     # Step as first word on line
     RE_SUB_STEP = '^Step:'
-    
+    RE_GRAVITY_ACTIVE = '(?<=Gravity Active:.)([0-9]*\.?[0-9]+).'
+
     # List of Axes
     AXES_LIST = ['TotalStepTime', 'DomainDecompTimes', 'BalancerTimes', 'BuildTreesTimes', 'GravityTimes', 'DensityTimes', 'MarkNeighborTimes', 'DensityOfNeighborTimes', 'PressureGradientTimes']
 
@@ -196,7 +203,7 @@ class ChangaLog():
             bigStep['PressureGradientTimes'] = self.getStepKeywordTimes(bigStep, ChangaLog.RE_PRESSURE_GRADIENT)
             # Rung indexes stored as a list of rung objects
             bigStep['RungIndexes'] = self.getRungIndexes(bigStep)    
-#            print bigStep['RungIndexes']
+            print bigStep['RungIndexes']
 #            print bigStep['GravityTimes']
 
         self.printStats()
@@ -208,7 +215,7 @@ class ChangaLog():
     # TODO: this is very dirty, clean up rung search
     def getRungIndexes(self, bigStep):
         rungIndexes = []
-        lastIdx = -1
+        lastIdx = None
         for i, line in enumerate(bigStep['LogLines']):
             if "Rungs" in line:
                 # dirty part to fix
@@ -222,7 +229,21 @@ class ChangaLog():
                 idx.fromRung = firstRung
                 idx.toRung = secRung
                 idx.fromIndex = i
+                # Set active gravity particles
+                # ex:  Gravity Active: 1021611, Gas Active: 1021610
+                grav, gas = s.split(",")
+                s, grav = grav.split(":")
+                grav.strip()
+                idx.gravityActive = int(grav)
+                # TODO: set active gas particles
+                # Set the toIndex of the last RungIndex
+                if lastIdx is not None:
+                    lastIdx.toIndex = idx.fromIndex - 1
                 rungIndexes.append(idx)
+                lastIdx = idx
+            # If this is the last line then set the toIndex
+            if lastIdx is not None:
+                lastIdx.toIndex = i
         return rungIndexes
 
     # Returns a list of axis names that this log recognizes as plottable
@@ -238,10 +259,10 @@ class ChangaLog():
                 y = self.getAllStepsTimes()
             else:
                 y = self.getAllStepsKeywordTimes(axis)
-            x = range(len(y))
+            x = np.arange(1, len(y) + 1)
         elif resolution == 'Sub step':
             y = self.getSubStepsKeywordTimes(axis)
-            x = range(len(y))
+            x = np.arange(1, len(y) + 1)
         return [y, x]
 
     # Returns [y, x],  where:
@@ -253,13 +274,17 @@ class ChangaLog():
         rungsTimes = []
         for step in self.bigSteps:
             rungTime = {}
-            for i in xrange(len(step['RungIndexes']) - 1):
-                rung1 = step['RungIndexes'][i]
-                rung2 = step['RungIndexes'][i+1]
-                rungTime[rung1.fromRung] = []
-                rungTime[rung1.fromRung].append(self.getStepAxisTotalTimeBetweenIndexes(step, axis, rung1.fromIndex, rung2.fromIndex))
-            print step[axis]
-            print step['RungIndexes']
+            for rung in step['RungIndexes']:
+                if not rung.fromRung in rungTime:
+                    rungTime[rung.fromRung] = []
+                rungTime[rung.fromRung].append(self.getStepAxisTotalTimeBetweenIndexes(step, axis, rung.fromIndex, rung.toIndex))
+            print rungTime
+            #print step[axis]
+            #print step['RungIndexes']
+            for key in rungTime:
+                y.append(sum(rungTime[key]))
+                x.append('Rung ' + str(key))
+        print [y, x]
         return [y, x]
     
     def getStepAxisTotalTimeBetweenIndexes(self, step, axis, fromIndex, toIndex):
@@ -309,7 +334,7 @@ class ChangaLog():
         # total stats
         print " - - - - - - - - - -"
         # subtract one for init
-        print "Total Big steps: ", self.getNumBigSteps() - 1
+        print "Total Big steps: ", self.getNumBigSteps()
     
         print "Total Domain Decomp times:      ", 
         printListStats(self.getAllStepsKeywordTimes('DomainDecompTimes'))
@@ -403,8 +428,9 @@ class ChangaLog():
         bigStepsLines = []
         # bigStep is a list of lines in a single step
         bigStep = []
-        stepNum = 0
-        # get init lines
+        
+        # TODO: add in small big step 0 (which is only rungs 0 to x)
+
         for line in fullLog:
             bigStep.append(line)
             
@@ -448,18 +474,27 @@ def createPlot(dataY, dataX, axisY, axisX, connect):
     leg = py.legend()
     leg.draggable()
     py.xlabel(axisX)
-    py.ylabel(axisY)
+    py.ylabel('time (s)')
     py.draw()
     py.show()
     
     return
-    
-def createBarPlot(dataY, dataX, axisY, axisX):
-    x = py.arange(len(dataY))
-    py.bar(x, dataY)
-    py.xticks(x + 0.5, dataX)
-    py.show()
 
+def createBarPlot(plotList, dataY, dataX, axisY, axisX):
+    colorList = ['r', 'g', 'b', 'y', 'k']
+    width = 0.35
+    x = np.arange(len(dataY))
+    thisColor = colorList[len(plotList)%len(colorList)]
+    py.bar(x+(width-0.1)*len(plotList), dataY, width, color=thisColor, label=axisY)
+    py.xticks(x, dataX, rotation=30, size='small')
+    py.xlabel(axisX)
+    py.ylabel('time (s)')
+    leg = py.legend()
+    leg.draggable()
+    plotList.append([dataY, dataX, axisY, axisX])
+    py.draw()
+    py.show()
+#    py.close()
     
 
 #def getCommand(bigSteps):
@@ -511,7 +546,7 @@ def printListStats(flist):
 def calcAverage(flist):
     if not list:
         return 0.0
-    return numpy.mean(flist)
+    return np.mean(flist)
 
 def calcSum(flist):
     if not list:
@@ -531,7 +566,7 @@ def calcMax(flist):
 def calcStd(flist):
     if not list:
         return 0.0
-    return numpy.std(flist)
+    return np.std(flist)
 
 #### MAIN ####
 

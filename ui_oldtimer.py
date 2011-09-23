@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'oldtimer.ui'
 #
-# Created: Thu Sep 22 22:30:27 2011
+# Created: Fri Sep 23 03:29:13 2011
 #      by: pyside-uic 0.2.8 running on PySide 1.0.1
 #
 # WARNING! All changes made in this file will be lost!
@@ -12,7 +12,7 @@ from PySide import QtCore, QtGui
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(772, 722)
+        MainWindow.resize(504, 570)
         sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Preferred)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
@@ -38,7 +38,7 @@ class Ui_MainWindow(object):
         self.buttonQuit.setFlat(False)
         self.buttonQuit.setObjectName("buttonQuit")
         self.layoutWidget = QtGui.QWidget(self.centralwidget)
-        self.layoutWidget.setGeometry(QtCore.QRect(20, 30, 342, 91))
+        self.layoutWidget.setGeometry(QtCore.QRect(20, 30, 461, 91))
         self.layoutWidget.setObjectName("layoutWidget")
         self.gridLayoutPlotSettings = QtGui.QGridLayout(self.layoutWidget)
         self.gridLayoutPlotSettings.setSizeConstraint(QtGui.QLayout.SetMinimumSize)
@@ -92,6 +92,8 @@ class Ui_MainWindow(object):
         self.comboResolution = QtGui.QComboBox(self.layoutWidget)
         self.comboResolution.setObjectName("comboResolution")
         self.gridLayoutPlotSettings.addWidget(self.comboResolution, 1, 3, 1, 1)
+        self.gridLayoutPlotSettings.setColumnStretch(2, 1)
+        self.gridLayoutPlotSettings.setColumnStretch(3, 1)
         self.layoutWidget1 = QtGui.QWidget(self.centralwidget)
         self.layoutWidget1.setGeometry(QtCore.QRect(20, 160, 461, 317))
         self.layoutWidget1.setObjectName("layoutWidget1")
@@ -130,7 +132,7 @@ class Ui_MainWindow(object):
         self.gridLayout_2.setColumnStretch(1, 1)
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtGui.QMenuBar(MainWindow)
-        self.menubar.setGeometry(QtCore.QRect(0, 0, 772, 25))
+        self.menubar.setGeometry(QtCore.QRect(0, 0, 504, 25))
         self.menubar.setObjectName("menubar")
         self.menu_File = QtGui.QMenu(self.menubar)
         self.menu_File.setObjectName("menu_File")

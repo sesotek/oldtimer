@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>772</width>
-    <height>722</height>
+    <width>504</width>
+    <height>570</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -62,11 +62,11 @@
      <rect>
       <x>20</x>
       <y>30</y>
-      <width>342</width>
+      <width>461</width>
       <height>91</height>
      </rect>
     </property>
-    <layout class="QGridLayout" name="gridLayoutPlotSettings" columnstretch="0,0,0,0">
+    <layout class="QGridLayout" name="gridLayoutPlotSettings" rowstretch="0,0,0" columnstretch="0,0,1,1">
      <property name="sizeConstraint">
       <enum>QLayout::SetMinimumSize</enum>
      </property>
@@ -228,7 +228,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>772</width>
+     <width>504</width>
      <height>25</height>
     </rect>
    </property>

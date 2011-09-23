@@ -184,7 +184,7 @@ class ChangaLog():
         
         # Dictionary of stats and info calculated now, and stored for later use
         for index, bigStep in enumerate(self.bigSteps):
-            bigStep['StepNumber'] = index
+            bigStep['StepNumber'] = index + 1 # First big step is #1, not #0
             bigStep['TotalStepTime'] = self.getStepTime(bigStep)
             bigStep['DomainDecompTimes'] = self.getStepKeywordTimes(bigStep, ChangaLog.RE_DOMAIN_DECOMP)
             bigStep['BalancerTimes'] = self.getStepKeywordTimes(bigStep, ChangaLog.RE_BALANCER)
@@ -196,7 +196,8 @@ class ChangaLog():
             bigStep['PressureGradientTimes'] = self.getStepKeywordTimes(bigStep, ChangaLog.RE_PRESSURE_GRADIENT)
             # Rung indexes stored as a list of rung objects
             bigStep['RungIndexes'] = self.getRungIndexes(bigStep)    
-            print bigStep['RungIndexes']
+#            print bigStep['RungIndexes']
+#            print bigStep['GravityTimes']
 
         self.printStats()
     
@@ -228,7 +229,7 @@ class ChangaLog():
     def getAxes(self):
         return ChangaLog.AXES_LIST
 
-    # Returns a list  2 lists, [0] is Y axis points, [1] is X axis points (or tick names), for this log for the specified axis
+    # Returns a list of 2 lists, [0] is Y axis points, [1] is X axis points (or tick names), for this log for the specified axis
     def getData(self, axis, resolution):
         y = []
         x = []
@@ -241,7 +242,6 @@ class ChangaLog():
         elif resolution == 'Sub step':
             y = self.getSubStepsKeywordTimes(axis)
             x = range(len(y))
-        
         return [y, x]
 
     # Returns [y, x],  where:
@@ -252,17 +252,24 @@ class ChangaLog():
         x = []
         rungsTimes = []
         for step in self.bigSteps:
-            for rung in step['RungIndexes']:
-                rungTime = {}
-                summedRungList = []
-                rungTime[rung.fromRung]
+            rungTime = {}
+            for i in xrange(len(step['RungIndexes']) - 1):
+                rung1 = step['RungIndexes'][i]
+                rung2 = step['RungIndexes'][i+1]
+                rungTime[rung1.fromRung] = []
+                rungTime[rung1.fromRung].append(self.getStepAxisTotalTimeBetweenIndexes(step, axis, rung1.fromIndex, rung2.fromIndex))
             print step[axis]
             print step['RungIndexes']
         return [y, x]
     
-    def getStepKeywordTotalTimeBetweenIndexes(self, fromIndex, toIndex):
-        times = []
-        return times
+    def getStepAxisTotalTimeBetweenIndexes(self, step, axis, fromIndex, toIndex):
+        time = 0
+        print 'From:', fromIndex, 'To:', toIndex
+        for idx, subStepTime in step[axis]:
+            if idx >= fromIndex and idx <= toIndex:
+                time += subStepTime
+                print 'time:', time
+        return time
 
     # Prints statistics for entire log
     def printStats(self):
@@ -399,18 +406,17 @@ class ChangaLog():
         stepNum = 0
         # get init lines
         for line in fullLog:
-            # find the rung distribution which marks the beginning of each big step
-            if ChangaLog.RE_RUNG_DISTRIBUTION in line:
+            bigStep.append(line)
+            
+            if ChangaLog.RE_BIG_STEP_LINE in line:
                 bigStepsLines.append(tuple(bigStep))
                 bigStep = []
             
-            bigStep.append(line)
     
             # "Done." signals the proper exit of ChaNGa
             if ChangaLog.RE_DONE in line:
-                bigStepsLines.append(tuple(bigStep))
                 return bigStepsLines
-    
+        
         return bigStepsLines
     
     def printAxesList(self):

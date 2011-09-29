@@ -103,7 +103,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         resolution = self.comboResolution.currentText()
         axisYName = self.comboYAxis.currentText()
         logYName = self.comboYLog.currentText()
-
+        pdb.set_trace()
         if resolution == 'Big step' or resolution == 'Sub step':
             for log in self.openLogs:
                 if log.logname == logYName:
@@ -115,14 +115,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 #                msgBox.exec_()
 #                return
 
-            createPlot(points[0], points[1], logYName + '.' + axisYName, resolution, self.checkBoxConnect.isChecked())
+            createPlot(points['yData'], points['xData'], logYName + '.' + axisYName, resolution, self.checkBoxConnect.isChecked())
 
         elif resolution == 'Summed rungs':
             for log in self.openLogs:
                 if log.logname == logYName:
                     points = log.logobject.getSummedRungs(axisYName)
 
-            createBarPlot(self.barPlots, points[0], points[1], logYName + '.' + axisYName, resolution)
+            createBarPlot(self.barPlots, points['yData'], points['xData'], logYName + '.' + axisYName, resolution)
 
 
 
@@ -250,20 +250,26 @@ class ChangaLog():
     def getAxes(self):
         return ChangaLog.AXES_LIST
 
-    # Returns a list of 2 lists, [0] is Y axis points, [1] is X axis points (or tick names), for this log for the specified axis
+    # Returns a dictionary of 4 lists, 'yData' is Y axis points, 
+    #                                  'xData' is X axis points, 
+    #                                  'xLabels' is X axis tick labels, 
+    #                                  'annotations' is point annotations, 
+    # for this log for the specified axis
     def getData(self, axis, resolution):
-        y = []
-        x = []
+        yData = []
+        xData = []
+        xLabels = []
+        annotations = []
         if resolution == 'Big step':
             if axis == 'TotalStepTime':
-                y = self.getAllStepsTimes()
+                yData = self.getAllStepsTimes()
             else:
-                y = self.getAllStepsKeywordTimes(axis)
-            x = np.arange(1, len(y) + 1)
+                yData = self.getAllStepsKeywordTimes(axis)
+            xData = np.arange(1, len(yData) + 1)
         elif resolution == 'Sub step':
-            y = self.getSubStepsKeywordTimes(axis)
-            x = np.arange(1, len(y) + 1)
-        return [y, x]
+            yData = self.getSubStepsKeywordTimes(axis)
+            xData = np.arange(1, len(yData) + 1)
+        return {'yData': yData, 'xData': xData, 'xLabels': xLabels, 'annotations': annotations}
 
     # Returns [y, x],  where:
     #   y ~= [
@@ -285,11 +291,11 @@ class ChangaLog():
                 y.append(sum(rungTime[key]))
                 x.append('Rung ' + str(key))
         print [y, x]
-        return [y, x]
+        return {'yData': y, 'xData': x}
     
     def getStepAxisTotalTimeBetweenIndexes(self, step, axis, fromIndex, toIndex):
         time = 0
-        print 'From:', fromIndex, 'To:', toIndex
+        print 'From', fromIndex, 'to', toIndex
         for idx, subStepTime in step[axis]:
             if idx >= fromIndex and idx <= toIndex:
                 time += subStepTime
@@ -475,13 +481,18 @@ def createPlot(dataY, dataX, axisY, axisX, connect):
     leg.draggable()
     py.xlabel(axisX)
     py.ylabel('time (s)')
+
+    # Set X axis tick labels as rungs
+    py.xticks(np.arange(len(dataX)), np.arange(10))
+    print zip(dataX, dataY)
+  
     py.draw()
     py.show()
     
     return
 
 def createBarPlot(plotList, dataY, dataX, axisY, axisX):
-    colorList = ['r', 'g', 'b', 'y', 'k']
+    colorList = ['b', 'g', 'y', 'r', 'm', 'c', 'k']
     width = 0.35
     x = np.arange(len(dataY))
     thisColor = colorList[len(plotList)%len(colorList)]

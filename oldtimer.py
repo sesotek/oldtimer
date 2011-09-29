@@ -254,7 +254,7 @@ class ChangaLog():
     #                                  'xData' is X axis points, 
     #                                  'xLabels' is X axis tick labels, 
     #                                  'annotations' is point annotations, 
-    # for this log for the specified axis
+    #  for this log for the specified axis
     def getData(self, axis, resolution):
         yData = []
         xData = []

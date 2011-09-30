@@ -103,7 +103,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         resolution = self.comboResolution.currentText()
         axisYName = self.comboYAxis.currentText()
         logYName = self.comboYLog.currentText()
-        pdb.set_trace()
+        #pdb.set_trace()
         if resolution == 'Big step' or resolution == 'Sub step':
             for log in self.openLogs:
                 if log.logname == logYName:
@@ -115,7 +115,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 #                msgBox.exec_()
 #                return
 
-            createPlot(points['yData'], points['xData'], logYName + '.' + axisYName, resolution, self.checkBoxConnect.isChecked())
+            createPlot(points['yData'], points['xData'], points['xLabels'], points['annotations'], logYName + '.' + axisYName, resolution, self.checkBoxStep.isChecked())
 
         elif resolution == 'Summed rungs':
             for log in self.openLogs:
@@ -254,7 +254,7 @@ class ChangaLog():
     #                                  'xData' is X axis points, 
     #                                  'xLabels' is X axis tick labels, 
     #                                  'annotations' is point annotations, 
-    #  for this log for the specified axis
+    # for this log for the specified axis
     def getData(self, axis, resolution):
         yData = []
         xData = []
@@ -267,8 +267,11 @@ class ChangaLog():
                 yData = self.getAllStepsKeywordTimes(axis)
             xData = np.arange(1, len(yData) + 1)
         elif resolution == 'Sub step':
-            yData = self.getSubStepsKeywordTimes(axis)
-            xData = np.arange(1, len(yData) + 1)
+            obj = self.getRungs(axis)
+            yData = obj['yData']
+            xData = obj['xData']
+            xLabels = obj['xLabels']
+            annotations = obj['annotations']
         return {'yData': yData, 'xData': xData, 'xLabels': xLabels, 'annotations': annotations}
 
     # Returns [y, x],  where:
@@ -289,7 +292,13 @@ class ChangaLog():
             #print step['RungIndexes']
             for key in rungTime:
                 y.append(sum(rungTime[key]))
-                x.append('Rung ' + str(key))
+                # If Rung 0 then label step number
+                xtick = ''
+                if key == 0:
+                    xtick = 'Step ' + str(step['StepNumber']) + ', Rung ' + str(key)
+                else:
+                    xtick = 'Rung ' + str(key)
+                x.append(xtick)
         print [y, x]
         return {'yData': y, 'xData': x}
     
@@ -301,6 +310,55 @@ class ChangaLog():
                 time += subStepTime
                 print 'time:', time
         return time
+
+    # Returns [y, x],  where:
+    #   y ~= [
+    #   x ~= ['Rung 3 to 4']
+    # axis: string of axis keyword
+    def getRungs(self, axis):
+        yData = []
+        xData = []
+        annotations = []
+        xLabels = []
+        rungList = []
+        for step in self.bigSteps:
+            for rung in step['RungIndexes']:
+                rungList.append(rung)
+                yData.append(self.getStepAxisTotalTimeBetweenIndexes(step, axis, rung.fromIndex, rung.toIndex))
+            
+            #    # If Rung 0 then label step number
+            #    xtick = ''
+            #    if key == 0:
+            #        xtick = 'Step ' + str(step['StepNumber']) + ', Rung ' + str(key)
+            #    else:
+            #        xtick = 'Rung ' + str(key)
+            #    xLabels.append(xtick)
+        xData = np.arange(1, len(yData) + 1)
+        xLabels = [str(rung.fromRung) + ' to ' + str(rung.toRung) for rung in rungList]
+        annotations = [str(rung.gravityActive) for rung in rungList]
+        print [yData, xData]
+        print rungList
+        print annotations
+        return {'yData': yData, 'xData': xData, 'xLabels': xLabels, 'annotations':annotations}
+
+    def getSubStepsKeywordTimes(self, keyword):
+        timeList = []
+        labelList = []
+        annotationList = []
+        for step in self.bigSteps:
+            rungTime = {}
+            for rung in step['RungIndexes']:
+                if not rung.fromRung in rungTime:
+                    rungTime[rung.fromRung] = []
+                    rungTime[rung.fromRung].append(self.getStepAxisTotalTimeBetweenIndexes(step, axis, rung.fromIndex, rung.toIndex))
+
+
+
+#            for e in [num for idx, num in step[keyword]]:      # time is [1]
+#                print e
+#                timeList.append(e)
+        return [timeList, labelList, annotationList]
+
 
     # Prints statistics for entire log
     def printStats(self):
@@ -399,12 +457,6 @@ class ChangaLog():
             timeList.append(calcSum([num for idx, num in step[keyword]]))
         return timeList
  
-    def getSubStepsKeywordTimes(self, keyword):
-        timeList = []
-        for step in self.bigSteps:
-            for e in [num for idx, num in step[keyword]]:      # time is [1]
-                timeList.append(e)
-        return timeList
    
     def getAllStepsTimes(self):
         timeList = []
@@ -470,20 +522,22 @@ def printTitle(f):
     return
     
 
-def createPlot(dataY, dataX, axisY, axisX, connect):
-    if connect:
-        plot_line_style = '-'
+def createPlot(dataY, dataX, ticksX, annotations, axisY, axisX, step):
+    if not ticksX:
+        ticksX = dataX
+    
+    if step:
+        py.step(dataX, dataY, where='post', linestyle='-', label=axisY) # where=post steps after point
     else:
-        plot_line_style = "None"
-
-    py.plot(dataX, dataY, marker='o', ms=5.0, linestyle=plot_line_style, label=axisY)
+        py.plot(dataX, dataY, marker='o', ms=5.0, linestyle='-', label=axisY)
+    
+    py.xticks(np.arange(1, len(dataX)+1), ticksX, horizontalalignment='left', rotation=30)
     leg = py.legend()
     leg.draggable()
     py.xlabel(axisX)
     py.ylabel('time (s)')
 
     # Set X axis tick labels as rungs
-    py.xticks(np.arange(len(dataX)), np.arange(10))
     print zip(dataX, dataY)
   
     py.draw()

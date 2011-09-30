@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'oldtimer.ui'
 #
-# Created: Fri Sep 23 03:29:13 2011
+# Created: Thu Sep 29 23:36:33 2011
 #      by: pyside-uic 0.2.8 running on PySide 1.0.1
 #
 # WARNING! All changes made in this file will be lost!
@@ -82,10 +82,10 @@ class Ui_MainWindow(object):
         self.label_2 = QtGui.QLabel(self.layoutWidget)
         self.label_2.setObjectName("label_2")
         self.gridLayoutPlotSettings.addWidget(self.label_2, 0, 2, 1, 1)
-        self.checkBoxConnect = QtGui.QCheckBox(self.layoutWidget)
-        self.checkBoxConnect.setChecked(True)
-        self.checkBoxConnect.setObjectName("checkBoxConnect")
-        self.gridLayoutPlotSettings.addWidget(self.checkBoxConnect, 2, 2, 1, 1)
+        self.checkBoxStep = QtGui.QCheckBox(self.layoutWidget)
+        self.checkBoxStep.setChecked(True)
+        self.checkBoxStep.setObjectName("checkBoxStep")
+        self.gridLayoutPlotSettings.addWidget(self.checkBoxStep, 2, 2, 1, 1)
         self.labelResolution = QtGui.QLabel(self.layoutWidget)
         self.labelResolution.setObjectName("labelResolution")
         self.gridLayoutPlotSettings.addWidget(self.labelResolution, 0, 3, 1, 1)
@@ -160,7 +160,7 @@ class Ui_MainWindow(object):
         self.buttonPlot.setText(QtGui.QApplication.translate("MainWindow", "Plot", None, QtGui.QApplication.UnicodeUTF8))
         self.label.setText(QtGui.QApplication.translate("MainWindow", "Log", None, QtGui.QApplication.UnicodeUTF8))
         self.label_2.setText(QtGui.QApplication.translate("MainWindow", "Axis", None, QtGui.QApplication.UnicodeUTF8))
-        self.checkBoxConnect.setText(QtGui.QApplication.translate("MainWindow", "Connect points", None, QtGui.QApplication.UnicodeUTF8))
+        self.checkBoxStep.setText(QtGui.QApplication.translate("MainWindow", "Step", None, QtGui.QApplication.UnicodeUTF8))
         self.labelResolution.setText(QtGui.QApplication.translate("MainWindow", "Resolution", None, QtGui.QApplication.UnicodeUTF8))
         self.menu_File.setTitle(QtGui.QApplication.translate("MainWindow", "&File", None, QtGui.QApplication.UnicodeUTF8))
         self.action_Open.setText(QtGui.QApplication.translate("MainWindow", "&Open", None, QtGui.QApplication.UnicodeUTF8))

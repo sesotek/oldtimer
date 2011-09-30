@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'oldtimer.ui'
 #
-# Created: Thu Sep 29 23:36:33 2011
+# Created: Fri Sep 30 00:28:20 2011
 #      by: pyside-uic 0.2.8 running on PySide 1.0.1
 #
 # WARNING! All changes made in this file will be lost!
@@ -38,7 +38,7 @@ class Ui_MainWindow(object):
         self.buttonQuit.setFlat(False)
         self.buttonQuit.setObjectName("buttonQuit")
         self.layoutWidget = QtGui.QWidget(self.centralwidget)
-        self.layoutWidget.setGeometry(QtCore.QRect(20, 30, 461, 91))
+        self.layoutWidget.setGeometry(QtCore.QRect(20, 30, 461, 113))
         self.layoutWidget.setObjectName("layoutWidget")
         self.gridLayoutPlotSettings = QtGui.QGridLayout(self.layoutWidget)
         self.gridLayoutPlotSettings.setSizeConstraint(QtGui.QLayout.SetMinimumSize)
@@ -92,6 +92,9 @@ class Ui_MainWindow(object):
         self.comboResolution = QtGui.QComboBox(self.layoutWidget)
         self.comboResolution.setObjectName("comboResolution")
         self.gridLayoutPlotSettings.addWidget(self.comboResolution, 1, 3, 1, 1)
+        self.checkBoxAnnotate = QtGui.QCheckBox(self.layoutWidget)
+        self.checkBoxAnnotate.setObjectName("checkBoxAnnotate")
+        self.gridLayoutPlotSettings.addWidget(self.checkBoxAnnotate, 3, 2, 1, 1)
         self.gridLayoutPlotSettings.setColumnStretch(2, 1)
         self.gridLayoutPlotSettings.setColumnStretch(3, 1)
         self.layoutWidget1 = QtGui.QWidget(self.centralwidget)
@@ -162,6 +165,7 @@ class Ui_MainWindow(object):
         self.label_2.setText(QtGui.QApplication.translate("MainWindow", "Axis", None, QtGui.QApplication.UnicodeUTF8))
         self.checkBoxStep.setText(QtGui.QApplication.translate("MainWindow", "Step", None, QtGui.QApplication.UnicodeUTF8))
         self.labelResolution.setText(QtGui.QApplication.translate("MainWindow", "Resolution", None, QtGui.QApplication.UnicodeUTF8))
+        self.checkBoxAnnotate.setText(QtGui.QApplication.translate("MainWindow", "Annotate", None, QtGui.QApplication.UnicodeUTF8))
         self.menu_File.setTitle(QtGui.QApplication.translate("MainWindow", "&File", None, QtGui.QApplication.UnicodeUTF8))
         self.action_Open.setText(QtGui.QApplication.translate("MainWindow", "&Open", None, QtGui.QApplication.UnicodeUTF8))
         self.actionE_xit.setText(QtGui.QApplication.translate("MainWindow", "E&xit", None, QtGui.QApplication.UnicodeUTF8))

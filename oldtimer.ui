@@ -63,10 +63,10 @@
       <x>20</x>
       <y>30</y>
       <width>461</width>
-      <height>91</height>
+      <height>113</height>
      </rect>
     </property>
-    <layout class="QGridLayout" name="gridLayoutPlotSettings" rowstretch="0,0,0" columnstretch="0,0,1,1">
+    <layout class="QGridLayout" name="gridLayoutPlotSettings" rowstretch="0,0,0,0" columnstretch="0,0,1,1">
      <property name="sizeConstraint">
       <enum>QLayout::SetMinimumSize</enum>
      </property>
@@ -161,6 +161,13 @@
      </item>
      <item row="1" column="3">
       <widget class="QComboBox" name="comboResolution"/>
+     </item>
+     <item row="3" column="2">
+      <widget class="QCheckBox" name="checkBoxAnnotate">
+       <property name="text">
+        <string>Annotate</string>
+       </property>
+      </widget>
      </item>
     </layout>
    </widget>

@@ -44,6 +44,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Set disabled plot button
         self.buttonPlot.setEnabled(False)
 
+        # Set Axis combo to repopulate when Log combo is changed
+        self.comboYLog.currentIndexChanged.connect(self.updateAxes)
+
     def openFile(self):
         filename, filtr = QtGui.QFileDialog.getOpenFileName(self)
         if filename:
@@ -63,15 +66,27 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             # Add ChangaLog and other metadata to openLogs
             self.openLogs.append( openLog(filename, self.getLogName(filename), logobject) )
             # Update the mainwindow widgets to reflect new log
-            self.updateAxes()
+            self.updateMainWindow()
             self.buttonPlot.setEnabled(True)
            
             # 
             # TODO: Make a new textEdit for each opened log
         #    self.textEdit1.insertPlainText(''.join(logLines))
 
+    def updateAxes(self, changalog):
+        # Get selected log name from combo box
+        # Find log object with that name
+        # Redo combo axes with possible axes for that log
+        logname = self.comboYLog.currentText()
+        logobject = None
+        for log in self.openLogs:
+            if log.logname == logname:
+                logobject = log.logobject
+        if logobject is not None:
+            self.comboYAxis.clear()
+            self.comboYAxis.addItems(logobject.getAxes())
 
-    def updateAxes(self):
+    def updateMainWindow(self):
         self.comboYAxis.clear()
         self.comboYLog.clear()
         self.comboResolution.clear()
@@ -79,7 +94,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         for log in self.openLogs:
             self.comboYLog.addItem(log.logname)
         
-        self.comboYAxis.addItems(ChangaLog.AXES_LIST)
         self.comboResolution.addItems(ChangaLog.RESOLUTION_LIST)
     
 
@@ -168,21 +182,43 @@ class ChangaLog():
     # Step as first word on line
     RE_SUB_STEP = '^Step:'
     RE_GRAVITY_ACTIVE = '(?<=Gravity Active:.)([0-9]*\.?[0-9]+).'
+    RE_CONSPH = 'Calculating gravity and SPH' 
+
+    # Text that indicates if +consph is set
+    RE_ISCONSPH = 'Calculating gravity and SPH'
 
     # List of Axes
     AXES_LIST = ['TotalStepTime', 'DomainDecompTimes', 'BalancerTimes', 'BuildTreesTimes', 'GravityTimes', 'DensityTimes', 'MarkNeighborTimes', 'DensityOfNeighborTimes', 'PressureGradientTimes']
+    CONSPH_AXES_LIST = ['TotalStepTime', 'DomainDecompTimes', 'BalancerTimes', 'BuildTreesTimes', 'ConsphTimes']
 
     # List of resolutions
     RESOLUTION_LIST = ['Big step', 'Sub step', 'Summed rungs']
 
+
     def __init__(self, loglines):
+        # Boolean indicating whether this log is for a +consph run
+        # consph runs don't have valid times for gravity, density, marking neighbors, pressure gradients, 
+        # or density of neighbors. But they do have a valid time for: calculating gravity and SPH
+        self.isconsph = self.findKeyword(loglines, ChangaLog.RE_ISCONSPH) is not None
+        print "Is consph?:", self.isconsph
+       
+        # Do parsing of entire log to build dictionary of times
         self.parselog(loglines)
+
+
+    # Returns line of text from a list of lines containing first occurence of keyword, or None if not found
+    def findKeyword(self, lines, keyword):
+        for line in lines:
+            if keyword in line:
+                return line
+        return None
 
 
     # Begins the parsing of a log file
     # list fullLog: list of lines in logfile
     # string logName: name of log
     def parselog(self, loglines):
+        
         # Break up log into list of Big steps
         # Each bigStep is a dictionary, where 'logLines' contains all the text lines in that step
         self.bigSteps = []
@@ -197,11 +233,15 @@ class ChangaLog():
             bigStep['DomainDecompTimes'] = self.getStepKeywordTimes(bigStep, ChangaLog.RE_DOMAIN_DECOMP)
             bigStep['BalancerTimes'] = self.getStepKeywordTimes(bigStep, ChangaLog.RE_BALANCER)
             bigStep['BuildTreesTimes'] = self.getStepKeywordTimes(bigStep, ChangaLog.RE_BUILD_TREES)
-            bigStep['GravityTimes'] = self.getStepKeywordTimes(bigStep, ChangaLog.RE_GRAVITY)
-            bigStep['DensityTimes'] = self.getStepKeywordTimes(bigStep, ChangaLog.RE_DENSITY)
-            bigStep['MarkNeighborTimes'] = self.getStepKeywordTimes(bigStep, ChangaLog.RE_MARK_NEIGHBOR)
-            bigStep['DensityOfNeighborTimes'] = self.getStepKeywordTimes(bigStep, ChangaLog.RE_DENSITY_OF_NEIGHBOR)
-            bigStep['PressureGradientTimes'] = self.getStepKeywordTimes(bigStep, ChangaLog.RE_PRESSURE_GRADIENT)
+            if self.isconsph:
+                bigStep['ConsphTimes'] = self.getStepKeywordTimes(bigStep, ChangaLog.RE_CONSPH)
+            else:
+                bigStep['GravityTimes'] = self.getStepKeywordTimes(bigStep, ChangaLog.RE_GRAVITY)
+                bigStep['DensityTimes'] = self.getStepKeywordTimes(bigStep, ChangaLog.RE_DENSITY)
+                bigStep['MarkNeighborTimes'] = self.getStepKeywordTimes(bigStep, ChangaLog.RE_MARK_NEIGHBOR)
+                bigStep['DensityOfNeighborTimes'] = self.getStepKeywordTimes(bigStep, ChangaLog.RE_DENSITY_OF_NEIGHBOR)
+                bigStep['PressureGradientTimes'] = self.getStepKeywordTimes(bigStep, ChangaLog.RE_PRESSURE_GRADIENT)
+
             # Rung indexes stored as a list of rung objects
             bigStep['RungIndexes'] = self.getRungIndexes(bigStep)    
             #print bigStep['RungIndexes']
@@ -250,7 +290,10 @@ class ChangaLog():
 
     # Returns a list of axis names that this log recognizes as plottable
     def getAxes(self):
-        return ChangaLog.AXES_LIST
+        if self.isconsph:
+            return ChangaLog.CONSPH_AXES_LIST
+        else:
+            return ChangaLog.AXES_LIST
 
     # Returns a dictionary of 4 lists, 'yData' is Y axis points, 
     #                                  'xData' is X axis points, 
@@ -377,22 +420,27 @@ class ChangaLog():
             
             print "  Build trees time:        ", 
             printListStats([num for idx, num in bigStep['BuildTreesTimes']])
-    
-            print "  Gravity time:            ",
-            printListStats([num for idx, num in bigStep['GravityTimes']])
+
+            if self.isconsph:
+                print "  Concurrent SPH time:     ", 
+                printListStats([num for idx, num in bigStep['ConsphTimes']])
+
+            else:
+                print "  Gravity time:            ",
+                printListStats([num for idx, num in bigStep['GravityTimes']])
      
-            print "  Density time:            ",
-            printListStats([num for idx, num in bigStep['DensityTimes']])
+                print "  Density time:            ",
+                printListStats([num for idx, num in bigStep['DensityTimes']])
        
-            print "  Mark Neighbor time:      ",
-            printListStats([num for idx, num in bigStep['MarkNeighborTimes']])
-            
-            print "  Density of Neighbor time:",
-            printListStats([num for idx, num in bigStep['DensityOfNeighborTimes']])
-            
-            print "  Pressure Gradient time:  ",
-            printListStats([num for idx, num in bigStep['PressureGradientTimes']])
-            
+                print "  Mark Neighbor time:      ",
+                printListStats([num for idx, num in bigStep['MarkNeighborTimes']])
+              
+                print "  Density of Neighbor time:",
+                printListStats([num for idx, num in bigStep['DensityOfNeighborTimes']])
+              
+                print "  Pressure Gradient time:  ",
+                printListStats([num for idx, num in bigStep['PressureGradientTimes']])
+              
             print "  Big step time (r):       ", bigStep['TotalStepTime']
     
         # total stats
@@ -408,21 +456,24 @@ class ChangaLog():
             
         print "Total Build trees times:        ", 
         printListStats(self.getAllStepsKeywordTimes('BuildTreesTimes'))
-    
-        print "Total Gravity times:            ",
-        printListStats(self.getAllStepsKeywordTimes('GravityTimes'))
+        if self.isconsph:
+            print "Total Concurrent SPH times:     ",
+            printListStats(self.getAllStepsKeywordTimes('ConsphTimes'))
+        else:
+            print "Total Gravity times:            ",
+            printListStats(self.getAllStepsKeywordTimes('GravityTimes'))
      
-        print "Total Density times:            ",
-        printListStats(self.getAllStepsKeywordTimes('DensityTimes'))
+            print "Total Density times:            ",
+            printListStats(self.getAllStepsKeywordTimes('DensityTimes'))
        
-        print "Total Mark Neighbor times:      ",
-        printListStats(self.getAllStepsKeywordTimes('MarkNeighborTimes'))
+            print "Total Mark Neighbor times:      ",
+            printListStats(self.getAllStepsKeywordTimes('MarkNeighborTimes'))
             
-        print "Total Density of Neighbor times:",
-        printListStats(self.getAllStepsKeywordTimes('DensityOfNeighborTimes'))
+            print "Total Density of Neighbor times:",
+            printListStats(self.getAllStepsKeywordTimes('DensityOfNeighborTimes'))
             
-        print "Total Pressure Gradient times:  ",
-        printListStats(self.getAllStepsKeywordTimes('PressureGradientTimes'))
+            print "Total Pressure Gradient times:  ",
+            printListStats(self.getAllStepsKeywordTimes('PressureGradientTimes'))
         
         print "Total Big Step (r) times:       ",
         printListStats(self.getAllStepsTimes())
